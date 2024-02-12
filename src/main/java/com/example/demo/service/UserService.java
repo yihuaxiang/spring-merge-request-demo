@@ -44,7 +44,7 @@ public class UserService implements IUserService{
 
   @PostConstruct
   public void init() {
-    ExecutorService executorService = Executors.newFixedThreadPool(10);
+    ExecutorService executorService = Executors.newFixedThreadPool(100);
     ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       executorService.execute(() -> {
