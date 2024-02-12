@@ -39,50 +39,47 @@ public class UserService implements IUserService{
   }
 
   public List<Map<String, Object>> batchQueryUser(List<Long> ids) {
-    System.out.println("batchQueryUser, size "+ ids.size());
     return restTemplate.getForEntity("https://playground.z.wiki/test/getUserInfo?ids=" + Joiner.on(",").join(ids), List.class).getBody();
   }
 
   @PostConstruct
   public void init() {
-    ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+    ExecutorService executorService = Executors.newFixedThreadPool(10);
+    ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      System.out.println("run scheduleAtFixedRate");
-      int queueSize = this.queue.size();
-      if (queueSize == 0) {
-        return ;
-      }
-
-      List<UserQuery> userQueryList = new ArrayList<>(50);
-      final int maxBatchSize = 50;
-
-      for (int i = 0;i<maxBatchSize;i++) {
-        if (queue.isEmpty()) {
-          break;
+      executorService.execute(() -> {
+        System.out.println("run scheduleAtFixedRate start");
+        int queueSize = this.queue.size();
+        if (queueSize == 0) {
+          return ;
         }
 
-        userQueryList.add(queue.poll());
-      }
+        List<UserQuery> userQueryList = new ArrayList<>(50);
+        final int maxBatchSize = 10;
 
-      List<Map<String, Object>> userList = this.batchQueryUser(userQueryList.stream().map(item -> item.getId()).collect(Collectors.toList()));
+        for (int i = 0;i<maxBatchSize;i++) {
+          if (queue.isEmpty()) {
+            break;
+          }
 
-      userQueryList.forEach(query -> {
-        System.out.println("1");
-        Integer id = query.getId().intValue();
-        System.out.println("2");
-        Optional<Map<String, Object>> info = userList.stream().filter(item -> id.equals(((Integer)item.get("id")))).findAny();
-        System.out.println("3");
-        if (info.isPresent()) {
-          System.out.println("4");
-          query.getCompletableFuture().complete(info.get());
-        } else {
-          System.out.println("5");
-          query.getCompletableFuture().complete(null);
+          userQueryList.add(queue.poll());
         }
+
+        List<Map<String, Object>> userList = this.batchQueryUser(userQueryList.stream().map(item -> item.getId()).collect(Collectors.toList()));
+
+        userQueryList.forEach(query -> {
+          Integer id = query.getId().intValue();
+          Optional<Map<String, Object>> info = userList.stream().filter(item -> id.equals(((Integer)item.get("id")))).findAny();
+          if (info.isPresent()) {
+            query.getCompletableFuture().complete(info.get());
+          } else {
+            query.getCompletableFuture().complete(null);
+          }
+        });
+
+
+        System.out.println("run scheduleAtFixedRate end");
       });
-      System.out.println("6");
-
-
     }, 100, 10, TimeUnit.MILLISECONDS);
   }
 }
