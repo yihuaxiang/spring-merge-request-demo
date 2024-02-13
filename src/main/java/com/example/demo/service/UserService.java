@@ -48,7 +48,6 @@ public class UserService implements IUserService{
     ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       executorService.execute(() -> {
-        System.out.println("run scheduleAtFixedRate start");
         int queueSize = this.queue.size();
         if (queueSize == 0) {
           return ;
@@ -65,6 +64,7 @@ public class UserService implements IUserService{
           userQueryList.add(queue.poll());
         }
 
+        System.out.println("批量请求" + userQueryList.size());
         List<Map<String, Object>> userList = this.batchQueryUser(userQueryList.stream().map(item -> item.getId()).collect(Collectors.toList()));
 
         userQueryList.forEach(query -> {
@@ -78,7 +78,6 @@ public class UserService implements IUserService{
         });
 
 
-        System.out.println("run scheduleAtFixedRate end");
       });
     }, 100, 10, TimeUnit.MILLISECONDS);
   }
